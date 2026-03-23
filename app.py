@@ -311,7 +311,7 @@ if "feedback_data" in st.session_state:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["Feature Ranking", "Raw Feedback Data"])
+    tab1, tab2, tab3 = st.tabs(["Feature Ranking", "Raw Feedback Data", "History"])
 
     with tab2:
         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -329,9 +329,23 @@ if "feedback_data" in st.session_state:
                     progress_bar.progress(pct, text=f"Analyzing feedbacks... {int(pct * 100)}%")
 
                 from llm_analyzer import analyze_feedbacks
+                from database import save_analysis
                 result_df = analyze_feedbacks(df, progress_callback=update_progress)
                 progress_bar.empty()
                 st.session_state["analysis_result"] = result_df
+
+                # Persist to Supabase
+                try:
+                    filters_meta = {
+                        "subcategories": selected_subcategories,
+                        "account_owners": selected_owners,
+                        "mrr_filter": mrr_filter_type,
+                        "min_mrr": min_mrr,
+                        "top_n": int(top_n),
+                    }
+                    save_analysis(start_date.isoformat(), end_date.isoformat(), filters_meta, df, result_df)
+                except Exception as e:
+                    st.warning(f"Analysis complete, but could not save to database: {e}")
 
         if "analysis_result" in st.session_state:
             result_df = st.session_state["analysis_result"]
@@ -386,6 +400,47 @@ if "feedback_data" in st.session_state:
                     analysis_filename,
                     "text/csv",
                 )
+
+    with tab3:
+        st.markdown("### Past Analyses")
+        try:
+            from database import load_history, load_run_features
+            history = load_history()
+            if not history:
+                st.info("No analyses saved yet. Run your first analysis to see it here.")
+            else:
+                for run in history:
+                    run_date = run["created_at"][:10]
+                    label = f"**{run_date}** — {run['start_date']} → {run['end_date']} | {run['total_feedbacks']} feedbacks | ${run['total_mrr']:,.2f} MRR"
+                    with st.expander(label):
+                        features_df = load_run_features(run["id"])
+                        if features_df.empty:
+                            st.write("No features saved for this run.")
+                        else:
+                            for _, row in features_df.iterrows():
+                                insight_html = f'<div class="feature-insight">{row["ai_insight"]}</div>' if row.get("ai_insight") else ""
+                                st.markdown(f"""
+                                <div class="feature-card">
+                                    <div class="feature-title">
+                                        <span class="rank-badge">#{int(row['rank'])}</span>
+                                        {row['feature']}
+                                    </div>
+                                    <div class="feature-metrics">
+                                        <div class="feature-metric">
+                                            <span class="feature-metric-label">Total MRR Impact</span>
+                                            <span class="feature-metric-value">${row['total_mrr']:,.2f}</span>
+                                        </div>
+                                        <div class="feature-metric">
+                                            <span class="feature-metric-label">Accounts</span>
+                                            <span class="feature-metric-value">{int(row['account_count'])}</span>
+                                        </div>
+                                    </div>
+                                    <div class="feature-accounts">Accounts: {row['accounts']}</div>
+                                    {insight_html}
+                                </div>
+                                """, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Could not load history: {e}")
 
 else:
     st.markdown("""
