@@ -254,6 +254,10 @@ elif mrr_filter_type == "Top N accounts":
     top_n = st.sidebar.number_input("Top N accounts by MRR", min_value=1, value=10, step=1)
 
 st.sidebar.markdown("---")
+st.sidebar.markdown("### Keyword Search")
+keyword_search = st.sidebar.text_input("Search in feedbacks", placeholder="e.g. ACH, invoice, payroll...")
+
+st.sidebar.markdown("---")
 fetch_clicked = st.sidebar.button("Fetch & Analyze", type="primary", use_container_width=True)
 
 # --- Data fetching (cached) ---
@@ -290,8 +294,13 @@ if fetch_clicked:
             )
             df = df[df["Account Name"].isin(top_accounts)]
 
+        # Keyword filter
+        if keyword_search.strip():
+            keyword = keyword_search.strip()
+            df = df[df["Feedback"].fillna("").str.contains(keyword, case=False, na=False)]
+
         if df.empty:
-            st.warning("No feedback records match the MRR filter.")
+            st.warning("No feedback records match the selected filters.")
         else:
             st.session_state["feedback_data"] = df
 
