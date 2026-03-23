@@ -27,7 +27,7 @@ def _build_where_clause(
     subcategories: list[str] | None = None,
     account_owners: list[str] | None = None,
 ) -> str:
-    conditions = []
+    conditions = ["RecordType.DeveloperName = 'Client_Feedback'"]
     if start_date:
         conditions.append(f"CreatedDate >= {start_date}T00:00:00Z")
     if end_date:
@@ -89,10 +89,10 @@ def get_filter_options() -> dict:
     sf = get_connection()
 
     subcategories = sf.query_all(
-        "SELECT Subcategory__c FROM CS_Insights__c WHERE Subcategory__c != null GROUP BY Subcategory__c"
+        "SELECT Subcategory__c FROM CS_Insights__c WHERE Subcategory__c != null AND RecordType.DeveloperName = 'Client_Feedback' GROUP BY Subcategory__c"
     )
     owners = sf.query_all(
-        "SELECT Account__r.Owner.Name FROM CS_Insights__c WHERE Account__r.Owner.Name != null GROUP BY Account__r.Owner.Name"
+        "SELECT Account__r.Owner.Name FROM CS_Insights__c WHERE Account__r.Owner.Name != null AND RecordType.DeveloperName = 'Client_Feedback' GROUP BY Account__r.Owner.Name"
     )
 
     return {
