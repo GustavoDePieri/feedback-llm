@@ -320,7 +320,7 @@ if "feedback_data" in st.session_state:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab1, tab2, tab3 = st.tabs(["Feature Ranking", "Raw Feedback Data", "History"])
+    tab1, tab2 = st.tabs(["Feature Ranking", "Raw Feedback Data"])
 
     with tab2:
         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -410,47 +410,6 @@ if "feedback_data" in st.session_state:
                     "text/csv",
                 )
 
-    with tab3:
-        st.markdown("### Past Analyses")
-        try:
-            from database import load_history, load_run_features
-            history = load_history()
-            if not history:
-                st.info("No analyses saved yet. Run your first analysis to see it here.")
-            else:
-                for run in history:
-                    run_date = run["created_at"][:10]
-                    label = f"**{run_date}** — {run['start_date']} → {run['end_date']} | {run['total_feedbacks']} feedbacks | ${run['total_mrr']:,.2f} MRR"
-                    with st.expander(label):
-                        features_df = load_run_features(run["id"])
-                        if features_df.empty:
-                            st.write("No features saved for this run.")
-                        else:
-                            for _, row in features_df.iterrows():
-                                insight_html = f'<div class="feature-insight">{row["ai_insight"]}</div>' if row.get("ai_insight") else ""
-                                st.markdown(f"""
-                                <div class="feature-card">
-                                    <div class="feature-title">
-                                        <span class="rank-badge">#{int(row['rank'])}</span>
-                                        {row['feature']}
-                                    </div>
-                                    <div class="feature-metrics">
-                                        <div class="feature-metric">
-                                            <span class="feature-metric-label">Total MRR Impact</span>
-                                            <span class="feature-metric-value">${row['total_mrr']:,.2f}</span>
-                                        </div>
-                                        <div class="feature-metric">
-                                            <span class="feature-metric-label">Accounts</span>
-                                            <span class="feature-metric-value">{int(row['account_count'])}</span>
-                                        </div>
-                                    </div>
-                                    <div class="feature-accounts">Accounts: {row['accounts']}</div>
-                                    {insight_html}
-                                </div>
-                                """, unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Could not load history: {e}")
-
 else:
     st.markdown("""
     <div class="welcome-box">
@@ -458,3 +417,45 @@ else:
         <div class="welcome-text">Set your filters in the sidebar and click <strong>Fetch & Analyze</strong> to discover<br>which product features have the highest MRR impact.</div>
     </div>
     """, unsafe_allow_html=True)
+
+# --- History section (always visible) ---
+st.markdown("---")
+st.markdown("### Past Analyses")
+try:
+    from database import load_history, load_run_features
+    history = load_history()
+    if not history:
+        st.info("No analyses saved yet. Run your first analysis to see it here.")
+    else:
+        for run in history:
+            run_date = run["created_at"][:10]
+            label = f"**{run_date}** — {run['start_date']} to {run['end_date']} | {run['total_feedbacks']} feedbacks | ${run['total_mrr']:,.2f} MRR"
+            with st.expander(label):
+                features_df = load_run_features(run["id"])
+                if features_df.empty:
+                    st.write("No features saved for this run.")
+                else:
+                    for _, row in features_df.iterrows():
+                        insight_html = f'<div class="feature-insight">{row["ai_insight"]}</div>' if row.get("ai_insight") else ""
+                        st.markdown(f"""
+                        <div class="feature-card">
+                            <div class="feature-title">
+                                <span class="rank-badge">#{int(row['rank'])}</span>
+                                {row['feature']}
+                            </div>
+                            <div class="feature-metrics">
+                                <div class="feature-metric">
+                                    <span class="feature-metric-label">Total MRR Impact</span>
+                                    <span class="feature-metric-value">${row['total_mrr']:,.2f}</span>
+                                </div>
+                                <div class="feature-metric">
+                                    <span class="feature-metric-label">Accounts</span>
+                                    <span class="feature-metric-value">{int(row['account_count'])}</span>
+                                </div>
+                            </div>
+                            <div class="feature-accounts">Accounts: {row['accounts']}</div>
+                            {insight_html}
+                        </div>
+                        """, unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"Could not load history: {e}")
