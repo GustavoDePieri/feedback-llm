@@ -27,7 +27,7 @@ SF_DOMAIN = _get_secret("SF_DOMAIN", "login")
 GEMINI_API_KEY = _get_secret("GEMINI_API_KEY")
 
 # LLM settings
-GEMINI_MODEL = "gemini-3.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 CHUNK_SIZE = 100
 
 # Salesforce report ID (fallback if SOQL doesn't work)

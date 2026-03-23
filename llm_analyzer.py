@@ -109,8 +109,9 @@ def extract_features(df: pd.DataFrame, progress_callback=None) -> list[dict]:
             features = _parse_json(result)
             if isinstance(features, list):
                 all_features.extend(features)
-        except (json.JSONDecodeError, Exception) as e:
-            print(f"Warning: Failed to parse chunk {chunk_num}: {e}")
+        except Exception as e:
+            import streamlit as st
+            st.warning(f"Chunk {chunk_num}/{total_chunks} failed: {e}")
 
         if progress_callback:
             progress_callback(chunk_num / total_chunks)
