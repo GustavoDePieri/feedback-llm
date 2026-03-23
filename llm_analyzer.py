@@ -64,8 +64,19 @@ Extracted feature requests:
 
 
 def _call_llm(prompt: str, data: str) -> str:
-    response = model.generate_content(prompt + data)
-    return response.text
+    import time
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt + data)
+            return response.text
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                wait = 30 * (attempt + 1)
+                import streamlit as st
+                st.info(f"Rate limited, waiting {wait}s before retry...")
+                time.sleep(wait)
+            else:
+                raise
 
 
 def _parse_json(text: str) -> dict | list:
