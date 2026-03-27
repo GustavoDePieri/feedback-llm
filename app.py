@@ -570,46 +570,38 @@ try:
             preview_html = ""
             if not top3.empty:
                 for _, row in top3.iterrows():
-                    preview_html += f"""
-                    <div class="history-feature-row">
-                        <span class="rank-badge">#{int(row['rank'])}</span>
-                        <span class="history-feature-name">{row['feature']}</span>
-                        <span class="history-feature-mrr">${row['total_mrr']:,.2f}</span>
-                        <span class="history-feature-accounts">{int(row['account_count'])} accounts</span>
-                    </div>"""
+                    preview_html += (
+                        f'<div class="history-feature-row">'
+                        f'<span class="rank-badge">#{int(row["rank"])}</span>'
+                        f'<span class="history-feature-name">{row["feature"]}</span>'
+                        f'<span class="history-feature-mrr">${row["total_mrr"]:,.2f}</span>'
+                        f'<span class="history-feature-accounts">{int(row["account_count"])} accounts</span>'
+                        f'</div>'
+                    )
 
             remaining = len(features_df) - 3 if len(features_df) > 3 else 0
+            more_html = f'<div class="history-more">+ {remaining} more features</div>' if remaining > 0 else ''
+            top_features_html = preview_html if preview_html else '<div class="history-empty">No features found in this run.</div>'
 
-            st.markdown(f"""
-            <div class="history-card">
-                <div class="history-header">
-                    <div class="history-date">{run_date}</div>
-                    <div class="history-period">{run['start_date']} to {run['end_date']}</div>
-                </div>
-                <div class="history-stats">
-                    <div class="history-stat">
-                        <span class="history-stat-value">{run['total_feedbacks']}</span>
-                        <span class="history-stat-label">Feedbacks</span>
-                    </div>
-                    <div class="history-stat">
-                        <span class="history-stat-value">{run.get('unique_accounts', '-')}</span>
-                        <span class="history-stat-label">Accounts</span>
-                    </div>
-                    <div class="history-stat">
-                        <span class="history-stat-value">${run['total_mrr']:,.0f}</span>
-                        <span class="history-stat-label">MRR in Scope</span>
-                    </div>
-                    <div class="history-stat">
-                        <span class="history-stat-value">{len(features_df)}</span>
-                        <span class="history-stat-label">Features Found</span>
-                    </div>
-                </div>
-                {filters_row}
-                <div class="history-top-label">Top Features</div>
-                {preview_html if preview_html else '<div class="history-empty">No features found in this run.</div>'}
-                {'<div class="history-more">+ ' + str(remaining) + ' more features</div>' if remaining > 0 else ''}
-            </div>
-            """, unsafe_allow_html=True)
+            card_html = (
+                f'<div class="history-card">'
+                f'<div class="history-header">'
+                f'<div class="history-date">{run_date}</div>'
+                f'<div class="history-period">{run["start_date"]} to {run["end_date"]}</div>'
+                f'</div>'
+                f'<div class="history-stats">'
+                f'<div class="history-stat"><span class="history-stat-value">{run["total_feedbacks"]}</span><span class="history-stat-label">Feedbacks</span></div>'
+                f'<div class="history-stat"><span class="history-stat-value">{run.get("unique_accounts", "-")}</span><span class="history-stat-label">Accounts</span></div>'
+                f'<div class="history-stat"><span class="history-stat-value">${run["total_mrr"]:,.0f}</span><span class="history-stat-label">MRR in Scope</span></div>'
+                f'<div class="history-stat"><span class="history-stat-value">{len(features_df)}</span><span class="history-stat-label">Features Found</span></div>'
+                f'</div>'
+                f'{filters_row}'
+                f'<div class="history-top-label">Top Features</div>'
+                f'{top_features_html}'
+                f'{more_html}'
+                f'</div>'
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
 
             # Expandable full details
             if not features_df.empty:
