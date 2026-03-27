@@ -329,8 +329,10 @@ st.markdown("""
 # --- Sidebar filters ---
 st.sidebar.markdown("### Filters")
 
-start_date = st.sidebar.date_input("Start date", value=date.today() - timedelta(days=90))
-end_date = st.sidebar.date_input("End date", value=date.today())
+DATA_START = date(2025, 10, 1)
+st.sidebar.caption(f"Data available from {DATA_START.strftime('%b %d, %Y')}")
+start_date = st.sidebar.date_input("Start date", value=date.today() - timedelta(days=90), min_value=DATA_START)
+end_date = st.sidebar.date_input("End date", value=date.today(), min_value=DATA_START)
 
 @st.cache_data(ttl=3600, show_spinner="Loading filters from Salesforce...")
 def load_filter_options():
