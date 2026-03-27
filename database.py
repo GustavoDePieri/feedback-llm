@@ -9,6 +9,13 @@ def get_client() -> Client:
     return create_client(url, key)
 
 
+def _clean_str(value: str) -> str:
+    """Remove null bytes that PostgreSQL cannot store."""
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    return value
+
+
 def save_analysis(
     start_date: str,
     end_date: str,
@@ -35,12 +42,12 @@ def save_analysis(
         features.append({
             "run_id": run_id,
             "rank": int(idx) + 1,
-            "feature": row.get("Feature", ""),
+            "feature": _clean_str(row.get("Feature", "")),
             "total_mrr": float(row.get("Total MRR", 0)),
             "account_count": int(row.get("Account Count", 0)),
-            "accounts": row.get("Accounts", ""),
-            "sample_feedbacks": row.get("Sample Feedbacks", ""),
-            "ai_insight": row.get("AI Insight", ""),
+            "accounts": _clean_str(row.get("Accounts", "")),
+            "sample_feedbacks": _clean_str(row.get("Sample Feedbacks", "")),
+            "ai_insight": _clean_str(row.get("AI Insight", "")),
         })
 
     if features:
