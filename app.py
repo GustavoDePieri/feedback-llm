@@ -187,6 +187,115 @@ st.markdown("""
         overflow: hidden;
     }
 
+    /* History cards */
+    .history-card {
+        background: linear-gradient(135deg, #1a1a3e 0%, #16163a 100%);
+        border: 1px solid rgba(139, 92, 246, 0.15);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.2rem;
+    }
+    .history-header {
+        display: flex;
+        align-items: baseline;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .history-date {
+        font-size: 1.1rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .history-period {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    .history-stats {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        background: rgba(139, 92, 246, 0.06);
+        border-radius: 10px;
+    }
+    .history-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .history-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+    .history-stat-label {
+        font-size: 0.7rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .history-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+    }
+    .history-tag {
+        display: inline-block;
+        background: rgba(139, 92, 246, 0.12);
+        border: 1px solid rgba(139, 92, 246, 0.25);
+        color: #c4b5fd;
+        font-size: 0.72rem;
+        padding: 0.15rem 0.6rem;
+        border-radius: 20px;
+    }
+    .history-top-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+    .history-feature-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+    }
+    .history-feature-row:last-child {
+        border-bottom: none;
+    }
+    .history-feature-name {
+        flex: 1;
+        color: #e2e8f0;
+        font-size: 0.9rem;
+    }
+    .history-feature-mrr {
+        font-weight: 600;
+        color: #c4b5fd;
+        font-size: 0.9rem;
+    }
+    .history-feature-accounts {
+        color: #64748b;
+        font-size: 0.8rem;
+        min-width: 80px;
+        text-align: right;
+    }
+    .history-more {
+        font-size: 0.8rem;
+        color: #8b5cf6;
+        margin-top: 0.5rem;
+        font-style: italic;
+    }
+    .history-empty {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-style: italic;
+    }
+
     /* Welcome state */
     .welcome-box {
         text-align: center;
@@ -431,12 +540,80 @@ try:
     else:
         for run in history:
             run_date = run["created_at"][:10]
-            label = f"**{run_date}** — {run['start_date']} to {run['end_date']} | {run['total_feedbacks']} feedbacks | ${run['total_mrr']:,.2f} MRR"
-            with st.expander(label):
-                features_df = load_run_features(run["id"])
-                if features_df.empty:
-                    st.write("No features saved for this run.")
-                else:
+            filters_meta = run.get("filters") or {}
+            subcats = filters_meta.get("subcategories") or []
+            owners = filters_meta.get("account_owners") or []
+            mrr_filt = filters_meta.get("mrr_filter", "No filter")
+
+            # Build filter tags
+            filter_tags = ""
+            if subcats:
+                for s in subcats:
+                    filter_tags += f'<span class="history-tag">{s}</span>'
+            if owners:
+                for o in owners:
+                    filter_tags += f'<span class="history-tag">{o}</span>'
+            if mrr_filt and mrr_filt != "No filter":
+                min_val = filters_meta.get("min_mrr", 0)
+                top_val = filters_meta.get("top_n", 0)
+                if mrr_filt == "Minimum MRR" and min_val:
+                    filter_tags += f'<span class="history-tag">MRR >= ${min_val:,.0f}</span>'
+                elif mrr_filt == "Top N accounts" and top_val:
+                    filter_tags += f'<span class="history-tag">Top {top_val} accounts</span>'
+
+            filters_row = f'<div class="history-filters">{filter_tags}</div>' if filter_tags else ""
+
+            # Preload top 3 features for preview
+            features_df = load_run_features(run["id"])
+            top3 = features_df.head(3) if not features_df.empty else pd.DataFrame()
+
+            preview_html = ""
+            if not top3.empty:
+                for _, row in top3.iterrows():
+                    preview_html += f"""
+                    <div class="history-feature-row">
+                        <span class="rank-badge">#{int(row['rank'])}</span>
+                        <span class="history-feature-name">{row['feature']}</span>
+                        <span class="history-feature-mrr">${row['total_mrr']:,.2f}</span>
+                        <span class="history-feature-accounts">{int(row['account_count'])} accounts</span>
+                    </div>"""
+
+            remaining = len(features_df) - 3 if len(features_df) > 3 else 0
+
+            st.markdown(f"""
+            <div class="history-card">
+                <div class="history-header">
+                    <div class="history-date">{run_date}</div>
+                    <div class="history-period">{run['start_date']} to {run['end_date']}</div>
+                </div>
+                <div class="history-stats">
+                    <div class="history-stat">
+                        <span class="history-stat-value">{run['total_feedbacks']}</span>
+                        <span class="history-stat-label">Feedbacks</span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-value">{run.get('unique_accounts', '-')}</span>
+                        <span class="history-stat-label">Accounts</span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-value">${run['total_mrr']:,.0f}</span>
+                        <span class="history-stat-label">MRR in Scope</span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-value">{len(features_df)}</span>
+                        <span class="history-stat-label">Features Found</span>
+                    </div>
+                </div>
+                {filters_row}
+                <div class="history-top-label">Top Features</div>
+                {preview_html if preview_html else '<div class="history-empty">No features found in this run.</div>'}
+                {'<div class="history-more">+ ' + str(remaining) + ' more features</div>' if remaining > 0 else ''}
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Expandable full details
+            if not features_df.empty:
+                with st.expander("View all features"):
                     for _, row in features_df.iterrows():
                         insight_html = f'<div class="feature-insight">{row["ai_insight"]}</div>' if row.get("ai_insight") else ""
                         st.markdown(f"""
