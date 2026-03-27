@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
@@ -294,10 +295,11 @@ if fetch_clicked:
             )
             df = df[df["Account Name"].isin(top_accounts)]
 
-        # Keyword filter
+        # Keyword filter (word-boundary match to avoid partial matches like "reach" for "ACH")
         if keyword_search.strip():
             keyword = keyword_search.strip()
-            df = df[df["Feedback"].fillna("").str.contains(keyword, case=False, na=False)]
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            df = df[df["Feedback"].fillna("").str.contains(pattern, case=False, na=False, regex=True)]
 
         if df.empty:
             st.warning("No feedback records match the selected filters.")

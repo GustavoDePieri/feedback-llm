@@ -1,10 +1,9 @@
 import json
-import google.generativeai as genai
+from openai import OpenAI
 import pandas as pd
-from config import GEMINI_API_KEY, GEMINI_MODEL, CHUNK_SIZE
+from config import OPENAI_API_KEY, OPENAI_MODEL, CHUNK_SIZE
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel(GEMINI_MODEL)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 EXTRACTION_PROMPT = """You are analyzing client feedback for a fintech/payroll platform called Ontop.
 Your task: extract actionable product feature requests from the feedback below.
@@ -16,14 +15,14 @@ Rules:
 - For each feature, include which accounts requested it and their MRR.
 - Return ONLY valid JSON, no commentary.
 
-Return a JSON array where each element has:
+Return a JSON object with a "features" key containing an array where each element has:
 {
   "feature": "Short description of the requested feature",
   "accounts": [{"name": "Account Name", "mrr": 1234.56}],
   "sample_feedbacks": ["Original feedback text (truncated to 200 chars)"]
 }
 
-If no actionable feature requests exist in the data, return an empty array: []
+If no actionable feature requests exist in the data, return: {"features": []}
 
 Here is the feedback data (CSV format):
 Account Name | Real MRR Last Month | Feedback
@@ -67,8 +66,16 @@ def _call_llm(prompt: str, data: str) -> str:
     import time
     for attempt in range(3):
         try:
-            response = model.generate_content(prompt + data)
-            return response.text
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": data},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0,
+            )
+            return response.choices[0].message.content
         except Exception as e:
             if "429" in str(e) and attempt < 2:
                 wait = 30 * (attempt + 1)
@@ -117,9 +124,14 @@ def extract_features(df: pd.DataFrame, progress_callback=None) -> list[dict]:
 
         try:
             result = _call_llm(EXTRACTION_PROMPT, data)
-            features = _parse_json(result)
-            if isinstance(features, list):
-                all_features.extend(features)
+            parsed = _parse_json(result)
+            if isinstance(parsed, dict):
+                features = parsed.get("features", [])
+            elif isinstance(parsed, list):
+                features = parsed
+            else:
+                features = []
+            all_features.extend(features)
         except Exception as e:
             import streamlit as st
             st.warning(f"Chunk {chunk_num}/{total_chunks} failed: {e}")

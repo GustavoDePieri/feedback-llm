@@ -23,11 +23,11 @@ SF_SECURITY_TOKEN = _get_secret("SF_SECURITY_TOKEN")
 SF_INSTANCE = _get_secret("SF_INSTANCE")
 SF_DOMAIN = _get_secret("SF_DOMAIN", "login")
 
-# Google Gemini
-GEMINI_API_KEY = _get_secret("GEMINI_API_KEY")
+# OpenAI
+OPENAI_API_KEY = _get_secret("OPENAI_API_KEY")
 
 # LLM settings
-GEMINI_MODEL = "gemini-2.5-flash"
+OPENAI_MODEL = "gpt-4.1"
 CHUNK_SIZE = 250
 
 # Salesforce report ID (fallback if SOQL doesn't work)
