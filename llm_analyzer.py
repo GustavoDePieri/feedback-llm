@@ -18,14 +18,14 @@ Rules:
 Return a JSON object with a "features" key containing an array where each element has:
 {
   "feature": "Short description of the requested feature",
-  "accounts": [{"name": "Account Name", "mrr": 1234.56}],
+  "accounts": [{"name": "Account Name", "platform_client_id": "CL-123", "mrr": 1234.56}],
   "sample_feedbacks": ["Original feedback text (truncated to 200 chars)"]
 }
 
 If no actionable feature requests exist in the data, return: {"features": []}
 
 Here is the feedback data (CSV format):
-Account Name | Real MRR Last Month | Feedback
+Account Name | Platform Client ID | Real MRR Last Month | Feedback
 """
 
 CLUSTERING_PROMPT = """You are a senior product analyst at Ontop, a fintech/payroll platform. Below is a list of extracted feature requests from client feedback, with associated accounts and MRR values.
@@ -51,7 +51,7 @@ Return a JSON array:
       "feature": "Feature description",
       "total_mrr": 12345.67,
       "account_count": 5,
-      "accounts": [{"name": "Account Name", "mrr": 1234.56}],
+      "accounts": [{"name": "Account Name", "platform_client_id": "CL-123", "mrr": 1234.56}],
       "sample_feedbacks": ["Example feedback 1", "Example feedback 2"],
       "insight": "Strategic recommendation about this feature request."
     }
@@ -119,7 +119,8 @@ def extract_features(df: pd.DataFrame, progress_callback=None) -> list[dict]:
         rows = []
         for _, row in chunk.iterrows():
             feedback = str(row["Feedback"])[:500]  # truncate very long feedbacks
-            rows.append(f"{row['Account Name']} | ${row['Real MRR Last Month']:,.2f} | {feedback}")
+            client_id = row.get("Platform Client ID", "")
+            rows.append(f"{row['Account Name']} | {client_id} | ${row['Real MRR Last Month']:,.2f} | {feedback}")
         data = "\n".join(rows)
 
         try:
@@ -161,12 +162,16 @@ def cluster_and_rank(features: list[dict]) -> pd.DataFrame:
     rows = []
     for f in features_list:
         accounts = f.get("accounts", [])
-        account_names = [a["name"] for a in accounts]
+        account_labels = []
+        for a in accounts:
+            name = a.get("name", "")
+            cid = a.get("platform_client_id", "")
+            account_labels.append(f"{name} ({cid})" if cid else name)
         rows.append({
             "Feature": f.get("feature", "Unknown"),
             "Total MRR": f.get("total_mrr", 0),
             "Account Count": f.get("account_count", len(accounts)),
-            "Accounts": ", ".join(account_names),
+            "Accounts": ", ".join(account_labels),
             "Sample Feedbacks": " | ".join(f.get("sample_feedbacks", [])[:3]),
             "AI Insight": f.get("insight", ""),
         })
